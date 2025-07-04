@@ -95,7 +95,7 @@ def update_columns_info():
         # Если Combobox ещё не создан — создаём
         if cmb_box_field is None:
             cmb_box_field = ttk.Combobox(middle_frame, values=list(dfs[0].columns), state='readonly')
-            cmb_box_field.grid(row=0, column=1)
+            cmb_box_field.grid(row=0, column=1, padx=20)
         else:  # Если уже создан — обновляем значения
             cmb_box_field['values'] = list(dfs[0].columns)
 
@@ -105,8 +105,9 @@ def update_columns_info():
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Сравнение файлов")
-    root.geometry("400x400+400+200")
+    root.geometry("350x400+400+200")
     root.resizable(False, True)
+    root.minsize(350, 280)
 
     # --- Верхний слой ---
     top_frame = tk.LabelFrame(root, text=" 1. Загрузка данных ", font=('Arial', 10, 'bold'),
