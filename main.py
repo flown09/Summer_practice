@@ -1,4 +1,6 @@
 import tkinter as tk
+from email.policy import default
+from tkinter import ttk
 from tkinter import filedialog, messagebox
 import pandas as pd
 import os
@@ -18,7 +20,7 @@ def load_file(button_number):
         file_paths[button_number - 1] = filename
         file_name_only = os.path.basename(filename)
         labels[button_number - 1].config(
-            text=f"Загружен файл: {file_name_only}", fg="green"
+            text=f"{file_name_only}", fg="green"
         )
 
 def read_data(file_path):
@@ -52,6 +54,10 @@ def compare_files():
     if df1 is None or df2 is None:
         return
 
+    if set(df1.columns) != set(df2.columns):
+        messagebox.showwarning("Внимание", "Названия или количество столбцов файлов не совпадают!")
+        return
+
     common_rows = pd.merge(df1, df2, how='inner')
 
     output_file = filedialog.asksaveasfilename(
@@ -70,11 +76,11 @@ if __name__ == "__main__":
 
     root = tk.Tk()
     root.title("Сравнение файлов")
-    root.geometry("400x200+700+400")
+    root.geometry("400x200+400+200")
     root.resizable(False, True)
 
+# --- Верхний слой ---
     top_frame = tk.Frame(root)
-
     top_frame.pack(side="top", fill="x", pady=10)
 
     btn_load1 = tk.Button(top_frame, text="Загрузить реестр 1", command=lambda: load_file(1))
@@ -89,10 +95,17 @@ if __name__ == "__main__":
     labels[0].grid(row=1, column=0, pady=(5, 0))
     labels[1].grid(row=1, column=1, pady=(5, 0))
 
-
+# --- Средний слой ---
     middle_frame = tk.Frame(root)
+    middle_frame.pack(fill="x", pady=10)
 
+    options = ["Совпадают", "Не совпадают"]
+    cmb_box_cond1 = ttk.Combobox(middle_frame, values= options, width=15)
+    cmb_box_cond1.set(options[0])
+    cmb_box_cond1.state(['readonly'])
+    cmb_box_cond1.grid(row=0, column=0, padx=30)
 
+# --- Нижний слой ---
     bottom_frame = tk.Frame(root)
     bottom_frame.pack(side="bottom", fill="x", pady=10)
 
