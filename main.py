@@ -76,11 +76,15 @@ if __name__ == "__main__":
 
     root = tk.Tk()
     root.title("Сравнение файлов")
-    root.geometry("400x200+400+200")
+    root.geometry("400x400+400+200")
     root.resizable(False, True)
 
+    # Стиль для разделительных линий
+    separator_style = {"bg": "#E0E0E0", "height": 1, "bd": 0}
+
 # --- Верхний слой ---
-    top_frame = tk.Frame(root)
+    top_frame = tk.LabelFrame(root, text=" 1. Загрузка данных ", font=('Arial', 10, 'bold'),
+                         padx=10, pady=10, relief=tk.GROOVE, bd=2)
     top_frame.pack(side="top", fill="x", pady=10)
 
     btn_load1 = tk.Button(top_frame, text="Загрузить реестр 1", command=lambda: load_file(1))
@@ -95,8 +99,11 @@ if __name__ == "__main__":
     labels[0].grid(row=1, column=0, pady=(5, 0))
     labels[1].grid(row=1, column=1, pady=(5, 0))
 
+
+
 # --- Средний слой ---
-    middle_frame = tk.Frame(root)
+    middle_frame = tk.LabelFrame(root, text=" 2. Условия сравнения ", font=('Arial', 10, 'bold'),
+                          padx=10, pady=10, relief=tk.GROOVE, bd=2)
     middle_frame.pack(fill="x", pady=10)
 
     options = ["Совпадают", "Не совпадают"]
@@ -106,13 +113,14 @@ if __name__ == "__main__":
     cmb_box_cond1.grid(row=0, column=0, padx=30)
 
 # --- Нижний слой ---
-    bottom_frame = tk.Frame(root)
+    bottom_frame = tk.LabelFrame(root, text=" 3. Выгрузка результатов ", font=('Arial', 10, 'bold'),
+                           padx=10, pady=10, relief=tk.GROOVE, bd=2)
     bottom_frame.pack(side="bottom", fill="x", pady=10)
 
     btn_compare = tk.Button(bottom_frame, text="Сравнить файлы и сохранить результат", command=compare_files)
     btn_compare.pack(side="bottom", pady=20, ipadx=10, ipady=10)
 
-    bottom_frame.pack_propagate(False)
+
     bottom_frame.configure(height=60)
 
     root.mainloop()
