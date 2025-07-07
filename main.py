@@ -8,9 +8,10 @@ class FileComparator:
     def __init__(self, root):
         self.root = root
         self.file_paths = [None, None]
-        self.dfs = [None, None]  # Для хранения загруженных DataFrame
+        self.dfs = [None, None]
         self.labels = [None, None]
         self.cmb_box_field = None
+        self.condition_cb = None
 
         self.filetypes = [
             ("Excel files", "*.xlsx *.xls"),
@@ -23,9 +24,9 @@ class FileComparator:
 
     def setup_ui(self):
         self.root.title("Сравнение файлов")
-        self.root.geometry("350x400+400+200")
+        self.root.geometry("350x260+400+200")
         self.root.resizable(False, True)
-        self.root.minsize(350, 280)
+        self.root.minsize(350, 260)
 
         # --- Верхний слой: Загрузка данных ---
         top_frame = tk.LabelFrame(self.root, text=" 1. Загрузка данных ", font=('Arial', 10, 'bold'),
@@ -57,9 +58,38 @@ class FileComparator:
                                      padx=10, pady=10, relief=tk.GROOVE, bd=2)
         bottom_frame.pack(fill="x", padx=10, pady=5)
 
+        btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template)
+        btn_template.grid(row=0, column=0, padx=0)
+
         btn_compare = tk.Button(bottom_frame, text="Сравнить и сохранить",
                                 command=self.compare_files)
-        btn_compare.pack(pady=10)
+        btn_compare.grid(row=0, column=1, padx=50)
+
+
+    def download_template(self):
+        data = {
+            'Фамилия': ['Иванов', 'Петрова'],
+            'Имя': ['Иван', 'Мария'],
+            'Отчество': ['Иванович', 'Петровна'],
+            'СНИЛС': ['123-456-789 01', '987-654-321 00'],
+            'ИНН': ['123456789012', '098765432109'],
+            'Серия и номер паспорта': ['1234 567890', '5678 901234']
+        }
+
+        template_df = pd.DataFrame(data)
+
+        output_file = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=self.filetypes,
+            title="Сохранить результат как",
+            initialfile="Шаблон_реестра.xlsx"
+        )
+
+        if output_file:
+            try:
+                template_df.to_excel(output_file, index=False)
+            except Exception as e:
+                messagebox.showerror("Ошибка записи файла", str(e))
 
     def load_file(self, button_number):
         filename = filedialog.askopenfilename(title=f"Выберите файл {button_number}", filetypes=self.filetypes)
@@ -112,18 +142,13 @@ class FileComparator:
             messagebox.showwarning("Внимание", "Пожалуйста, загрузите оба файла.")
             return
 
-        # Если данные ещё не загружены (на всякий случай)
-        for i in range(2):
-            if self.dfs[i] is None and self.file_paths[i] is not None:
-                self.dfs[i] = self.read_data(self.file_paths[i])
-
         if self.dfs[0] is None or self.dfs[1] is None:
             return
 
         if set(self.dfs[0].columns) != set(self.dfs[1].columns):
             messagebox.showwarning("Внимание", "Названия или количество столбцов файлов не совпадают!")
             return
-
+        print(self.dfs[0].columns)
         common_rows = pd.merge(self.dfs[0], self.dfs[1], how='inner')
 
         output_file = filedialog.asksaveasfilename(
