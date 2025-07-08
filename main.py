@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import pandas as pd
 import os
+from functools import partial
 
 
 class FileComparator:
@@ -10,8 +11,13 @@ class FileComparator:
         self.file_paths = [None, None]
         self.dfs = [None, None]
         self.labels = [None, None]
-        self.cmb_box_field = None
-        self.condition_cb = None
+        self.condition_rows = []  # Список для хранения строк условий
+        self.condition_frame = None  # Фрейм для условий
+
+        # Константы для управления размерами
+        self.ROW_HEIGHT = 40  # Высота одной строки условия
+        self.MAX_VISIBLE_ROWS = 5  # Максимальное количество видимых строк перед включением скролла
+        self.BASE_HEIGHT = 330  # Базовая высота окна
 
         self.filetypes = [
             ("Excel files", "*.xlsx *.xls"),
@@ -24,29 +30,24 @@ class FileComparator:
 
     def setup_ui(self):
         self.root.title("Сравнение файлов")
-        self.root.geometry("400x270+400+200")
+        self.root.geometry(f"400x{self.BASE_HEIGHT}+400+200")
         self.root.resizable(False, True)
-        self.root.minsize(400, 270)
+        self.root.minsize(400, self.BASE_HEIGHT)
 
+        # Главное меню
         main_menu = tk.Menu(root)
-
         file_menu = tk.Menu(main_menu, tearoff=0)
-
         load_submenu = tk.Menu(file_menu, tearoff=0)
         load_submenu.add_command(label="Загрузить реестр 1", command=lambda: self.load_file(1))
         load_submenu.add_command(label="Загрузить реестр 2", command=lambda: self.load_file(2))
-
         file_menu.add_cascade(label="Загрузить", menu=load_submenu)
-
         file_menu.add_command(label="Очистить", command=self.clear_data)
         file_menu.add_command(label="Скачать шаблон", command=self.download_template)
         file_menu.add_command(label="Сравнить", command=self.compare_files)
         file_menu.add_separator()
         file_menu.add_command(label="Выход", command=root.quit)
-
         main_menu.add_cascade(label="Файл", menu=file_menu)
         main_menu.add_cascade(label="?")
-
         root.config(menu=main_menu)
 
         # --- Верхний слой: Загрузка данных ---
@@ -71,10 +72,17 @@ class FileComparator:
                                           padx=10, pady=10, relief=tk.GROOVE, bd=2)
         self.middle_frame.pack(fill="x", padx=10, pady=5)
 
-        options = ["Совпадают", "Не совпадают"]
-        self.cmb_box_cond1 = ttk.Combobox(self.middle_frame, values=options, state='readonly', width=20)
-        self.cmb_box_cond1.set(options[0])
-        self.cmb_box_cond1.grid(row=0, column=0)
+        # Создаем контейнер для условий с возможностью прокрутки
+        self.create_conditions_container()
+
+        # Кнопка добавления нового условия
+        btn_add_condition = tk.Button(
+            self.middle_frame,
+            text="+ Добавить условие",
+            command=self.add_condition_row,
+            bg="#e0e0e0"
+        )
+        btn_add_condition.pack(pady=(5, 0))
 
         # --- Нижний слой: Выгрузка результатов ---
         bottom_frame = tk.LabelFrame(self.root, text=" 3. Выгрузка результатов ", font=('Arial', 10, 'bold'),
@@ -84,20 +92,129 @@ class FileComparator:
         btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template)
         btn_template.grid(row=0, column=0, padx=0)
 
-        btn_compare = tk.Button(bottom_frame, text="Сравнить и сохранить",
-                                command=self.compare_files)
+        btn_compare = tk.Button(bottom_frame, text="Сравнить и сохранить", command=self.compare_files)
         btn_compare.grid(row=0, column=1, padx=(50, 0), sticky='w')
 
         btn_exit = tk.Button(bottom_frame, text="Закрыть", command=root.quit)
         btn_exit.grid(row=0, column=2, padx=10)
 
+        # Добавляем первое условие
+        self.add_condition_row()
+
+    def create_conditions_container(self):
+        """Создает контейнер для условий с возможностью прокрутки"""
+        # Основной фрейм для контейнера
+        container_frame = tk.Frame(self.middle_frame)
+        container_frame.pack(fill="x", expand=True)
+
+        # Создаем холст (Canvas) и скроллбар
+        self.canvas = tk.Canvas(container_frame, height=100)
+        scrollbar = ttk.Scrollbar(container_frame, orient="vertical", command=self.canvas.yview)
+
+        # Создаем фрейм для условий внутри холста
+        self.condition_frame = tk.Frame(self.canvas)
+        self.condition_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+
+        self.canvas.create_window((0, 0), window=self.condition_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Размещаем элементы
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def add_condition_row(self):
+        """Добавляет новую строку с условием"""
+        # Создаем фрейм для строки условия
+        row_frame = tk.Frame(self.condition_frame)
+        row_frame.pack(fill="x", pady=2)
+
+        # Выбор типа условия
+        cond_options = ["Совпадают", "Не совпадают"]
+        cond_cb = ttk.Combobox(row_frame, values=cond_options, state='readonly', width=15)
+        cond_cb.set(cond_options[0])
+        cond_cb.pack(side="left", padx=5)
+
+        # Выбор поля для сравнения
+        field_cb = ttk.Combobox(row_frame, state='readonly', width=20)
+        field_cb.pack(side="left", padx=5)
+
+        # Если данные уже загружены, обновляем значения
+        if self.dfs[0] is not None:
+            field_cb['values'] = list(self.dfs[0].columns)
+            if self.dfs[0].columns.size > 0:
+                field_cb.set(self.dfs[0].columns[0])
+
+        # Кнопка удаления условия
+        btn_remove = tk.Button(
+            row_frame,
+            text="×",
+            fg="red",
+            font=("Arial", 10, "bold"),
+            command=partial(self.remove_condition_row, row_frame),
+            width=2
+        )
+        btn_remove.pack(side="left", padx=5)
+
+        # Сохраняем информацию о строке
+        self.condition_rows.append({
+            "frame": row_frame,
+            "cond_cb": cond_cb,
+            "field_cb": field_cb
+        })
+
+        # Обновляем размеры окна
+        self.update_window_size()
+
+    def remove_condition_row(self, row_frame):
+        """Удаляет строку с условием"""
+        # Находим и удаляем строку
+        for i, row in enumerate(self.condition_rows):
+            if row["frame"] == row_frame:
+                row["frame"].destroy()
+                self.condition_rows.pop(i)
+                break
+
+        # Если это была последняя строка, добавляем новую пустую
+        if len(self.condition_rows) == 0:
+            self.add_condition_row()
+
+        # Обновляем размеры окна
+        self.update_window_size()
+
+    def update_window_size(self):
+        """Обновляет размер окна в зависимости от количества условий"""
+        # Вычисляем новую высоту
+        visible_rows = min(len(self.condition_rows), self.MAX_VISIBLE_ROWS)
+        extra_height = visible_rows * self.ROW_HEIGHT
+        new_height = self.BASE_HEIGHT + extra_height
+
+        # Устанавливаем новую высоту
+        self.root.geometry(f"400x{new_height}")
+
+        # Настраиваем высоту холста
+        self.canvas.configure(height=min(visible_rows * self.ROW_HEIGHT, self.MAX_VISIBLE_ROWS * self.ROW_HEIGHT))
+
     def clear_data(self):
-        self.dfs.clear()
-        self.file_paths.clear()
+        """Очищает все данные и сбрасывает интерфейс"""
+        self.dfs = [None, None]
+        self.file_paths = [None, None]
         self.labels[0].config(text="Файл не загружен", fg="red")
         self.labels[1].config(text="Файл не загружен", fg="red")
 
+        # Удаляем все условия, кроме одного
+        while len(self.condition_rows) > 1:
+            self.remove_condition_row(self.condition_rows[-1]["frame"])
+
+        # Сбрасываем первое условие
+        if self.condition_rows:
+            row = self.condition_rows[0]
+            row["cond_cb"].set("Совпадают")
+            row["field_cb"].set('')
+
     def download_template(self):
+        """Скачивает шаблон файла"""
         data = {
             'Фамилия': ['Иванов', 'Петрова'],
             'Имя': ['Иван', 'Мария'],
@@ -112,17 +229,19 @@ class FileComparator:
         output_file = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=self.filetypes,
-            title="Сохранить результат как",
+            title="Сохранить шаблон как",
             initialfile="Шаблон_реестра.xlsx"
         )
 
         if output_file:
             try:
                 template_df.to_excel(output_file, index=False)
+                messagebox.showinfo("Успех", "Шаблон успешно сохранён!")
             except Exception as e:
                 messagebox.showerror("Ошибка записи файла", str(e))
 
     def load_file(self, button_number):
+        """Загружает файл"""
         filename = filedialog.askopenfilename(title=f"Выберите файл {button_number}", filetypes=self.filetypes)
         if filename:
             self.file_paths[button_number - 1] = filename
@@ -131,11 +250,10 @@ class FileComparator:
 
             # Сохраняем загруженные данные
             self.dfs[button_number - 1] = self.read_data(filename)
-
-            # Обновляем информацию о столбцах
-            self.update_columns_info()
+            self.update_field_comboboxes()
 
     def read_data(self, file_path):
+        """Читает данные из файла"""
         if not file_path:
             return None
         ext = file_path.split('.')[-1].lower()
@@ -153,22 +271,18 @@ class FileComparator:
             messagebox.showerror("Ошибка чтения файла", str(e))
             return None
 
-    def update_columns_info(self):
-        """Обновляем информацию о столбцах и выводим в Combobox"""
+    def update_field_comboboxes(self):
+        """Обновляет выпадающие списки с полями"""
         if self.dfs[0] is not None:
-            # Если Combobox ещё не создан — создаём
-            if self.cmb_box_field is None:
-                self.cmb_box_field = ttk.Combobox(
-                    self.middle_frame,
-                    values=list(self.dfs[0].columns),
-                    state='readonly',
-                    width=20
-                )
-                self.cmb_box_field.grid(row=0, column=1, padx=20)
-            else:  # Если уже создан — обновляем значения
-                self.cmb_box_field['values'] = list(self.dfs[0].columns)
+            columns = list(self.dfs[0].columns)
+            for row in self.condition_rows:
+                field_cb = row["field_cb"]
+                field_cb['values'] = columns
+                if columns:
+                    field_cb.set(columns[0])
 
     def compare_files(self):
+        """Выполняет сравнение файлов по заданным условиям"""
         if None in self.file_paths:
             messagebox.showwarning("Внимание", "Пожалуйста, загрузите оба файла.")
             return
@@ -176,55 +290,56 @@ class FileComparator:
         if self.dfs[0] is None or self.dfs[1] is None:
             return
 
-        # Проверяем, что выбрано поле для сравнения
-        if not self.cmb_box_field.get():
-            messagebox.showwarning("Внимание", "Выберите поле для сравнения!")
-            return
+        # Проверяем условия
+        conditions = []
+        for i, row in enumerate(self.condition_rows):
+            condition_type = row["cond_cb"].get()
+            field = row["field_cb"].get()
 
-        # Получаем выбранное поле
-        field = self.cmb_box_field.get()
+            if not field:
+                messagebox.showwarning("Внимание", f"Выберите поле в условии #{i + 1}!")
+                return
 
-        if field not in self.dfs[0].columns or field not in self.dfs[1].columns:
-            messagebox.showwarning("Внимание", f"Поле '{field}' отсутствует в одном из файлов!")
-            return
+            if field not in self.dfs[0].columns or field not in self.dfs[1].columns:
+                messagebox.showwarning("Внимание", f"Поле '{field}' отсутствует в одном из файлов (условие #{i + 1})!")
+                return
 
-        # Получаем выбранное условие
-        condition = self.cmb_box_cond1.get()
+            conditions.append((field, condition_type))
 
-        # Выполняем сравнение в зависимости от выбранного условия
-        if condition == "Совпадают":
-            # Находим значения, которые есть в обоих файлах
-            mask = self.dfs[0][field].isin(self.dfs[1][field])
-            # Берем только данные из первого файла
-            common_rows = self.dfs[0][mask]
+        # Применяем условия
+        result_df = self.apply_conditions(conditions)
 
-        elif condition == "Не совпадают":
-            mask1 = ~self.dfs[0][field].isin(self.dfs[1][field])
-            unique_from_file1 = self.dfs[0][mask1]
-
-            # Находим уникальные значения из второго файла
-            mask2 = ~self.dfs[1][field].isin(self.dfs[0][field])
-            unique_from_file2 = self.dfs[1][mask2]
-
-            # Объединяем оба набора уникальных значений
-            common_rows = pd.concat([unique_from_file1, unique_from_file2], ignore_index=True)
-        else:
-            messagebox.showwarning("Ошибка", "Неизвестное условие сравнения")
-            return
-
-
+        # Сохраняем результат
         output_file = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=self.filetypes,
             title="Сохранить результат как",
-            initialfile="Результат_сравнения.xlsx"  # Добавлено имя по умолчанию
+            initialfile="Результат_сравнения.xlsx"
         )
 
         if output_file:
             try:
-                common_rows.to_excel(output_file, index=False)
+                result_df.to_excel(output_file, index=False)
+                messagebox.showinfo("Успех", "Результат успешно сохранён!")
             except Exception as e:
                 messagebox.showerror("Ошибка записи файла", str(e))
+
+    def apply_conditions(self, conditions):
+        """Применяет все условия к данным"""
+        # Начинаем с полного набора данных первого файла
+        result = self.dfs[0].copy()
+
+        for field, condition_type in conditions:
+            if condition_type == "Совпадают":
+                # Оставляем только строки, где значение есть во втором файле
+                mask = result[field].isin(self.dfs[1][field])
+                result = result[mask]
+            else:  # "Не совпадают"
+                # Оставляем только строки, где значения нет во втором файле
+                mask = ~result[field].isin(self.dfs[1][field])
+                result = result[mask]
+
+        return result
 
 
 if __name__ == "__main__":
