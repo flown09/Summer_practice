@@ -105,24 +105,30 @@ class FileComparator:
         """Создает контейнер для условий с возможностью прокрутки"""
         # Основной фрейм для контейнера
         container_frame = tk.Frame(self.middle_frame)
-        container_frame.pack(fill="x", expand=True)
+        container_frame.pack(fill="both", expand=True)
 
         # Создаем холст (Canvas) и скроллбар
-        self.canvas = tk.Canvas(container_frame, height=100)
+        self.canvas = tk.Canvas(container_frame)
         scrollbar = ttk.Scrollbar(container_frame, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Создаем фрейм для условий внутри холста
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # Обёртка для условий
         self.condition_frame = tk.Frame(self.canvas)
         self.condition_frame.bind(
             "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
 
         self.canvas.create_window((0, 0), window=self.condition_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Размещаем элементы
-        self.canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Добавляем прокрутку мышью
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def add_condition_row(self):
         """Добавляет новую строку с условием"""
@@ -186,9 +192,16 @@ class FileComparator:
     def update_window_size(self):
         """Обновляет размер окна в зависимости от количества условий"""
         # Вычисляем новую высоту
-        visible_rows = min(len(self.condition_rows), self.MAX_VISIBLE_ROWS)
-        extra_height = visible_rows * self.ROW_HEIGHT
-        new_height = self.BASE_HEIGHT + extra_height
+        # visible_rows = min(len(self.condition_rows), self.MAX_VISIBLE_ROWS)
+        # extra_height = visible_rows * self.ROW_HEIGHT
+        # new_height = self.BASE_HEIGHT + extra_height
+        visible_rows = len(self.condition_rows)
+        if visible_rows > self.MAX_VISIBLE_ROWS:
+            extra_height = self.MAX_VISIBLE_ROWS * self.ROW_HEIGHT
+        else:
+            extra_height = visible_rows * self.ROW_HEIGHT
+
+        new_height = self.BASE_HEIGHT + extra_height - 40
 
         # Устанавливаем новую высоту
         self.root.geometry(f"400x{new_height}")
