@@ -30,9 +30,9 @@ class FileComparator:
 
     def setup_ui(self):
         self.root.title("Сравнение файлов")
-        self.root.geometry(f"400x{self.BASE_HEIGHT}+400+200")
+        self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
         self.root.resizable(False, True)
-        self.root.minsize(400, self.BASE_HEIGHT)
+        self.root.minsize(450, self.BASE_HEIGHT)
 
         # Главное меню
         main_menu = tk.Menu(root)
@@ -131,10 +131,20 @@ class FileComparator:
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def add_condition_row(self):
-        """Добавляет новую строку с условием"""
         # Создаем фрейм для строки условия
         row_frame = tk.Frame(self.condition_frame)
         row_frame.pack(fill="x", pady=2)
+
+        logic_cb = ttk.Combobox(row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
+
+        if len(self.condition_rows) == 0:
+            # Первая строка: делаем пустой и неактивный
+            logic_cb.set("")  # Пустой текст
+            logic_cb.configure(state="disabled")  # Деактивировать выбор
+        else:
+            logic_cb.set("И")  # По умолчанию можно "И" или "ИЛИ"
+
+        logic_cb.pack(side="left", padx=5)
 
         # Выбор типа условия
         cond_options = ["Совпадают", "Не совпадают"]
@@ -153,19 +163,21 @@ class FileComparator:
                 field_cb.set(self.dfs[0].columns[0])
 
         # Кнопка удаления условия
-        btn_remove = tk.Button(
-            row_frame,
-            text="×",
-            fg="red",
-            font=("Arial", 10, "bold"),
-            command=partial(self.remove_condition_row, row_frame),
-            width=2
-        )
-        btn_remove.pack(side="left", padx=5)
+        if len(self.condition_rows) > 0:  # Только если это не первая строка
+            btn_remove = tk.Button(
+                row_frame,
+                text="×",
+                fg="red",
+                font=("Arial", 10, "bold"),
+                command=partial(self.remove_condition_row, row_frame),
+                width=2
+            )
+            btn_remove.pack(side="left", padx=5)
 
         # Сохраняем информацию о строке
         self.condition_rows.append({
             "frame": row_frame,
+            "logic_cb": logic_cb,
             "cond_cb": cond_cb,
             "field_cb": field_cb
         })
@@ -225,6 +237,8 @@ class FileComparator:
             row = self.condition_rows[0]
             row["cond_cb"].set("Совпадают")
             row["field_cb"].set('')
+            row["logic_cb"].set("")
+
 
     def download_template(self):
         """Скачивает шаблон файла"""
@@ -306,6 +320,7 @@ class FileComparator:
         # Проверяем условия
         conditions = []
         for i, row in enumerate(self.condition_rows):
+            logic = row["logic_cb"].get() if i > 0 else "И"  # Первый — всегда "И"
             condition_type = row["cond_cb"].get()
             field = row["field_cb"].get()
 
@@ -313,11 +328,7 @@ class FileComparator:
                 messagebox.showwarning("Внимание", f"Выберите поле в условии #{i + 1}!")
                 return
 
-            if field not in self.dfs[0].columns or field not in self.dfs[1].columns:
-                messagebox.showwarning("Внимание", f"Поле '{field}' отсутствует в одном из файлов (условие #{i + 1})!")
-                return
-
-            conditions.append((field, condition_type))
+            conditions.append((field, condition_type, logic))
 
         # Применяем условия
         result_df = self.apply_conditions(conditions)
@@ -338,23 +349,34 @@ class FileComparator:
                 messagebox.showerror("Ошибка записи файла", str(e))
 
     def apply_conditions(self, conditions):
-        """Применяет все условия к данным"""
-        # Начинаем с полного набора данных первого файла
-        result = self.dfs[0].copy()
+        """Применяет все условия к объединённым данным с логикой И / ИЛИ"""
+        df1 = self.dfs[0]
+        df2 = self.dfs[1]
+        combined = pd.concat([df1, df2], ignore_index=True)
 
-        for field, condition_type in conditions:
+        result_mask = pd.Series([True] * len(combined))
+
+        for i, (field, condition_type, logic) in enumerate(conditions):
             if condition_type == "Совпадают":
-                # Оставляем только строки, где значение есть во втором файле
-                mask = result[field].isin(self.dfs[1][field])
-                result = result[mask]
+                values = set(df1[field]) & set(df2[field])
             elif condition_type == "Не совпадают":
-                df1_unique = self.dfs[0][~self.dfs[0][field].isin(self.dfs[1][field])]
-                df2_unique = self.dfs[1][~self.dfs[1][field].isin(self.dfs[0][field])]
-                result = pd.concat([df1_unique, df2_unique], ignore_index=True)
+                values = set(df1[field]) ^ set(df2[field])
             else:
                 raise ValueError(f"Неизвестный тип условия: {condition_type}")
 
-        return result
+            condition_mask = combined[field].isin(values)
+
+            if i == 0:
+                result_mask = condition_mask
+            else:
+                if logic == "И":
+                    result_mask &= condition_mask
+                elif logic == "ИЛИ":
+                    result_mask |= condition_mask
+                else:
+                    raise ValueError(f"Неизвестная логика: {logic}")
+
+        return combined[result_mask].drop_duplicates().copy()
 
 
 if __name__ == "__main__":
