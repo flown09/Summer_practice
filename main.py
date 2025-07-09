@@ -347,10 +347,12 @@ class FileComparator:
                 # Оставляем только строки, где значение есть во втором файле
                 mask = result[field].isin(self.dfs[1][field])
                 result = result[mask]
-            else:  # "Не совпадают"
-                # Оставляем только строки, где значения нет во втором файле
-                mask = ~result[field].isin(self.dfs[1][field])
-                result = result[mask]
+            elif condition_type == "Не совпадают":
+                df1_unique = self.dfs[0][~self.dfs[0][field].isin(self.dfs[1][field])]
+                df2_unique = self.dfs[1][~self.dfs[1][field].isin(self.dfs[0][field])]
+                result = pd.concat([df1_unique, df2_unique], ignore_index=True)
+            else:
+                raise ValueError(f"Неизвестный тип условия: {condition_type}")
 
         return result
 
