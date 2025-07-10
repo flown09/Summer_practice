@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import pandas as pd
 import os
 from functools import partial
-
+import subprocess
 
 
 class FileComparator:
@@ -12,8 +12,8 @@ class FileComparator:
         self.file_paths = [None, None]
         self.dfs = [None, None]
         self.labels = [None, None]
-        self.condition_rows = []  # Список для хранения строк условий
-        self.condition_frame = None  # Фрейм для условий
+        self.condition_rows = []
+        self.condition_frame = None
 
         # Константы для управления размерами
         self.ROW_HEIGHT = 40  # Высота одной строки условия
@@ -93,7 +93,7 @@ class FileComparator:
         btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template)
         btn_template.grid(row=0, column=0, padx=0)
 
-        btn_compare = tk.Button(bottom_frame, text="Сравнить и сохранить", command=self.compare_files)
+        btn_compare = tk.Button(bottom_frame, text="Сравнить", command=self.confirm_comparison)
         btn_compare.grid(row=0, column=1, padx=(50, 0), sticky='w')
 
         btn_exit = tk.Button(bottom_frame, text="Закрыть", command=root.quit)
@@ -101,6 +101,62 @@ class FileComparator:
 
         # Добавляем первое условие
         self.add_condition_row()
+
+    def confirm_comparison(self):
+        """Показывает модальное окно с количеством строк перед сравнением"""
+        if None in self.file_paths or self.dfs[0] is None or self.dfs[1] is None:
+            messagebox.showwarning("Внимание", "Пожалуйста, загрузите оба файла.")
+            return
+
+        conditions = []
+        for i, row in enumerate(self.condition_rows):
+            logic = row.get("logic_cb").get() if i > 0 else "И"
+            condition_type = row["cond_cb"].get()
+            field = row["field_cb"].get()
+
+            if not field:
+                messagebox.showwarning("Внимание", f"Выберите поле в условии #{i + 1}!")
+                return
+            if field not in self.dfs[0].columns or field not in self.dfs[1].columns:
+                messagebox.showwarning("Внимание", f"Поле '{field}' отсутствует в одном из файлов!")
+                return
+
+            conditions.append((field, condition_type, logic))
+
+        result_df = self.apply_conditions(conditions)
+        row_count = len(result_df)
+
+        popup = tk.Toplevel(self.root)
+        popup.title("Результат сравнения")
+        popup.resizable(False, False)
+        popup.transient(self.root)
+        popup.grab_set()
+
+        # Центрирование относительно главного окна
+        self.root.update_idletasks()
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        root_width = self.root.winfo_width()
+        root_height = self.root.winfo_height()
+
+        popup_width = 300
+        popup_height = 120
+        center_x = root_x + (root_width - popup_width) // 2
+        center_y = root_y + (root_height - popup_height) // 2
+        popup.geometry(f"{popup_width}x{popup_height}+{center_x}+{center_y}")
+
+        # Виджеты
+        tk.Label(popup, text=f"Найдено строк: {row_count}", font=("Arial", 11)).pack(pady=10)
+
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(pady=10)
+
+        def proceed():
+            popup.destroy()
+            self.compare_files()
+
+        tk.Button(btn_frame, text="Сохранить", command=proceed).pack(side="left", padx=10)
+        tk.Button(btn_frame, text="Отмена", command=popup.destroy).pack(side="left", padx=10)
 
     def create_conditions_container(self):
         """Создает контейнер для условий с возможностью прокрутки"""
@@ -345,7 +401,47 @@ class FileComparator:
         if output_file:
             try:
                 result_df.to_excel(output_file, index=False)
-                messagebox.showinfo("Успех", "Результат успешно сохранён!")
+                #messagebox.showinfo("Успех", "Результат успешно сохранён!")
+                popup = tk.Toplevel(self.root)
+                popup.title("Успех")
+                popup.resizable(False, False)
+                popup.transient(self.root)
+                popup.grab_set()
+
+                # Центрирование
+                self.root.update_idletasks()
+                root_x = self.root.winfo_rootx()
+                root_y = self.root.winfo_rooty()
+                root_width = self.root.winfo_width()
+                root_height = self.root.winfo_height()
+
+                popup_width = 320
+                popup_height = 120
+                center_x = root_x + (root_width - popup_width) // 2
+                center_y = root_y + (root_height - popup_height) // 2
+                popup.geometry(f"{popup_width}x{popup_height}+{center_x}+{center_y}")
+
+                # Текст
+                tk.Label(popup, text="Результат успешно сохранён!", font=("Arial", 11)).pack(pady=10)
+
+                # Кнопки
+                btn_frame = tk.Frame(popup)
+                btn_frame.pack(pady=10)
+
+                def open_directory():
+                    folder = os.path.dirname(output_file)
+                    try:
+                        if os.name == 'nt':  # Windows
+                            os.startfile(folder)
+                        elif os.name == 'posix':  # Linux, macOS
+                            subprocess.call(['xdg-open', folder])
+                        else:
+                            messagebox.showinfo("Информация", f"Путь к папке: {folder}")
+                    except Exception as e:
+                        messagebox.showerror("Ошибка", f"Не удалось открыть папку:\n{e}")
+
+                tk.Button(btn_frame, text="Открыть папку", command=open_directory).pack(side="left", padx=10)
+                tk.Button(btn_frame, text="ОК", command=popup.destroy).pack(side="left", padx=10)
             except Exception as e:
                 messagebox.showerror("Ошибка записи файла", str(e))
 
