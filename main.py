@@ -5,6 +5,7 @@ import os
 from functools import partial
 
 
+
 class FileComparator:
     def __init__(self, root):
         self.root = root
