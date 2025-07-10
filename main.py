@@ -57,11 +57,11 @@ class FileComparator:
         top_frame.pack(fill="x", padx=10, pady=5)
 
         btn_load1 = tk.Button(top_frame, text="Загрузить реестр 1", command=lambda: self.load_file(1),
-                              width=20, height=2)
+                              width=22, height=2)
         btn_load2 = tk.Button(top_frame, text="Загрузить реестр 2", command=lambda: self.load_file(2),
-                              width=20, height=2)
-        btn_load1.grid(row=0, column=0, padx=14, pady=5)
-        btn_load2.grid(row=0, column=1, padx=14, pady=5)
+                              width=22, height=2)
+        btn_load1.grid(row=0, column=0, padx=19, pady=5)
+        btn_load2.grid(row=0, column=1, padx=19, pady=5)
 
         self.labels[0] = tk.Label(top_frame, text="Файл не загружен", fg="red", wraplength=140)
         self.labels[1] = tk.Label(top_frame, text="Файл не загружен", fg="red", wraplength=140)
@@ -91,10 +91,10 @@ class FileComparator:
         bottom_frame.pack(fill="x", padx=10, pady=5)
 
         btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template)
-        btn_template.grid(row=0, column=0, padx=0)
+        btn_template.grid(row=0, column=0, padx=5)
 
         btn_compare = tk.Button(bottom_frame, text="Сравнить", command=self.confirm_comparison)
-        btn_compare.grid(row=0, column=1, padx=(50, 0), sticky='w')
+        btn_compare.grid(row=0, column=1, padx=(155, 0), sticky='w')
 
         btn_exit = tk.Button(bottom_frame, text="Закрыть", command=root.quit)
         btn_exit.grid(row=0, column=2, padx=10)
@@ -454,14 +454,19 @@ class FileComparator:
         result_mask = pd.Series([True] * len(combined))
 
         for i, (field, condition_type, logic) in enumerate(conditions):
+            # Приводим значения к строке и нижнему регистру
+            df1_vals = df1[field].astype(str).str.lower()
+            df2_vals = df2[field].astype(str).str.lower()
+            combined_vals = combined[field].astype(str).str.lower()
+
             if condition_type == "Совпадают":
-                values = set(df1[field]) & set(df2[field])
+                values = set(df1_vals) & set(df2_vals)
             elif condition_type == "Не совпадают":
-                values = set(df1[field]) ^ set(df2[field])
+                values = set(df1_vals) ^ set(df2_vals)
             else:
                 raise ValueError(f"Неизвестный тип условия: {condition_type}")
 
-            condition_mask = combined[field].isin(values)
+            condition_mask = combined_vals.isin(values)
 
             if i == 0:
                 result_mask = condition_mask
@@ -473,7 +478,16 @@ class FileComparator:
                 else:
                     raise ValueError(f"Неизвестная логика: {logic}")
 
-        return combined[result_mask].drop_duplicates().copy()
+        result_df = combined[result_mask].copy()
+
+        # Приводим все строки к нижнему регистру для сравнения и удаления дубликатов
+        normalized_df = result_df.apply(lambda col: col.astype(str).str.lower())
+
+        # Удаляем дубликаты по приведённым к нижнему регистру данным
+        mask = ~normalized_df.duplicated()
+
+        # Возвращаем оригинальные строки, но только те, что уникальны в нижнем регистре
+        return result_df[mask].reset_index(drop=True)
 
 
 if __name__ == "__main__":
