@@ -31,9 +31,11 @@ class FileComparator:
 
     def setup_ui(self):
         self.root.title("Сравнение файлов")
-        self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
-        self.root.resizable(False, True)
-        self.root.minsize(450, self.BASE_HEIGHT)
+        #self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
+        self.root.update_idletasks()
+        self.root.minsize(530, 370)
+        #self.root.resizable(False, True)
+        #self.root.minsize(450, self.BASE_HEIGHT)
 
         # Главное меню
         main_menu = tk.Menu(root)
