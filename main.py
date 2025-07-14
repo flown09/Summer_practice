@@ -50,7 +50,7 @@ class FileComparator:
         file_menu.add_separator()
         file_menu.add_command(label="Выход", command=root.quit)
         main_menu.add_cascade(label="Файл", menu=file_menu)
-        main_menu.add_cascade(label="?")
+        main_menu.add_cascade(label="?", command=self.show_help)
         root.config(menu=main_menu)
 
         # --- Верхний слой: Загрузка данных ---
@@ -103,6 +103,48 @@ class FileComparator:
 
         # Добавляем первое условие
         self.add_condition_row()
+
+    def show_help(self):
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Инструкция по использованию")
+        help_window.geometry("600x400")
+        help_window.transient(self.root)
+        help_window.grab_set()
+
+        text = tk.Text(help_window, wrap="word", padx=10, pady=10)
+        text.insert("1.0", """\
+    Инструкция по использованию приложения:
+
+    1. Загрузка файлов:
+       - Нажмите «Загрузить реестр 1» и выберите первый файл.
+       - Нажмите «Загрузить реестр 2» и выберите второй файл.
+       Поддерживаются форматы: Excel (.xlsx, .xls), CSV и ODS.
+
+    2. Добавление условий сравнения:
+       - Нажмите кнопку «+ Добавить условие».
+       - Выберите поле для сравнения (например, СНИЛС).
+       - Укажите тип условия: «Совпадают» или «Не совпадают».
+       - Если добавляется несколько условий — выберите логику (И / ИЛИ).
+
+    3. Сравнение файлов:
+       - Нажмите «Сравнить».
+       - Появится окно с количеством найденных строк.
+       - Подтвердите сохранение результата.
+
+    4. Скачивание шаблона:
+       - Кнопка «Скачать шаблон» позволяет загрузить пример Excel-файла для заполнения.
+
+    5. Очистка данных:
+       - Вы можете сбросить загруженные файлы и условия через пункт меню «Очистить».
+
+    Результаты сравнения сохраняются в файл.
+    """)
+        text.config(state="disabled")
+        text.pack(fill="both", expand=True)
+
+        # Кнопка закрытия
+        close_btn = tk.Button(help_window, text="Закрыть", command=help_window.destroy)
+        close_btn.pack(pady=5)
 
     def confirm_comparison(self):
         """Показывает модальное окно с количеством строк перед сравнением"""
