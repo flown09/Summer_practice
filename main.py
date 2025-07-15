@@ -388,11 +388,21 @@ class FileComparator:
         ext = file_path.split('.')[-1].lower()
         try:
             if ext in ['xlsx', 'xls']:
-                return pd.read_excel(file_path)
+                # Читаем все листы как словарь DataFrame
+                sheets = pd.read_excel(file_path, sheet_name=None)
+                # Склеиваем все листы по строкам, добавляем колонку 'Лист' при необходимости
+                df = pd.concat(
+                    sheets.values(),
+                    ignore_index=True
+                )
+                return df
             elif ext == 'csv':
                 return pd.read_csv(file_path)
             elif ext == 'ods':
-                return pd.read_excel(file_path, engine='odf')
+                # Аналогично для ODS
+                sheets = pd.read_excel(file_path, engine='odf', sheet_name=None)
+                df = pd.concat(sheets.values(), ignore_index=True)
+                return df
             else:
                 messagebox.showerror("Ошибка", f"Не поддерживаемый формат файла: {ext}")
                 return None
