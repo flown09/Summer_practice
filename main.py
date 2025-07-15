@@ -173,6 +173,21 @@ class FileComparator:
             messagebox.showwarning("Внимание", "Пожалуйста, загрузите оба файла.")
             return
 
+        # Новая проверка: совпадение названий столбцов
+        cols1 = list(self.dfs[0].columns)
+        cols2 = list(self.dfs[1].columns)
+        set1, set2 = set(cols1), set(cols2)
+        if set1 != set2:
+            missing_in_1 = set2 - set1
+            missing_in_2 = set1 - set2
+            msg = "Набор столбцов в файлах не совпадает!\n"
+            if missing_in_1:
+                msg += f"Столбцы, отсутствующие в файле 1: {', '.join(missing_in_1)}\n"
+            if missing_in_2:
+                msg += f"Столбцы, отсутствующие в файле 2: {', '.join(missing_in_2)}"
+            messagebox.showerror("Ошибка", msg)
+            return
+
         conditions = []
         for i, row in enumerate(self.condition_rows):
             logic = row.get("logic_cb").get() if i > 0 else "И"
@@ -360,7 +375,6 @@ class FileComparator:
             row["cond_cb"].set("Совпадают")
             row["field_cb"].set('')
             row["logic_cb"].set("")
-
 
     def download_template(self):
         """Скачивает шаблон файла"""
