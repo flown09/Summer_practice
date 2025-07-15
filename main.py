@@ -21,10 +21,10 @@ class FileComparator:
         self.BASE_HEIGHT = 330  # Базовая высота окна
 
         self.filetypes = [
+            ("All files", "*.*"),
             ("Excel files", "*.xlsx *.xls"),
             ("CSV files", "*.csv"),
-            ("ODS files", "*.ods"),
-            ("All files", "*.*")
+            ("ODS files", "*.ods")
         ]
 
         self.setup_ui()
