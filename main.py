@@ -431,7 +431,7 @@ class FileComparator:
                 )
                 return df
             elif ext == 'csv':
-                return pd.read_csv(file_path)
+                return pd.read_csv(file_path, encoding="utf-8-sig")
             elif ext == 'ods':
                 # Аналогично для ODS
                 sheets = pd.read_excel(file_path, engine='odf', sheet_name=None)
@@ -501,7 +501,13 @@ class FileComparator:
 
         if output_file:
             try:
-                result_df.to_excel(output_file, index=False)
+                #result_df.to_excel(output_file, index=False)
+                file_ext = os.path.splitext(output_file)[1].lower()
+                if file_ext == ".csv":
+                    result_df.to_csv(output_file, index=False, encoding="utf-8-sig")
+                else:
+                    result_df.to_excel(output_file, index=False)
+
                 #messagebox.showinfo("Успех", "Результат успешно сохранён!")
                 popup = tk.Toplevel(self.root)
                 popup.title("Успех")
