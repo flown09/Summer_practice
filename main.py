@@ -477,7 +477,19 @@ class FileComparator:
             conditions.append((field, condition_type, logic))
 
         # Применяем условия
-        result_df = self.apply_conditions(conditions)
+        try:
+            result_df = self.apply_conditions(conditions)
+        except Exception as e:
+            messagebox.showerror(
+                "Ошибка при сравнении реестров",
+                "Произошла ошибка при сравнении реестров.\n\n"
+                "Возможные причины:\n"
+                "1. Убедитесь, что заголовки в обоих файлах совпадают.\n"
+                "2. Проверьте, что нет лишних или пустых строк.\n"
+                "3. Убедитесь в отсутствии пустых заголовков.\n\n"
+                f"Техническая ошибка: {str(e)}"
+            )
+            return
 
         # Сохраняем результат
         output_file = filedialog.asksaveasfilename(
