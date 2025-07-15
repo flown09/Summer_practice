@@ -30,6 +30,26 @@ class FileComparator:
         self.setup_ui()
 
     def setup_ui(self):
+        # --- принудительная светлая тема для ttk ---
+        style = ttk.Style(self.root)
+        # выбор светлого базового стиля
+        style.theme_use('clam')
+        # глобально белый фон и чёрный текст для всех ttk‑виджетов
+        style.configure('.', background='white', foreground='black')
+        # специфическая настройка кнопок, лейблов, комбобоксов
+        style.configure('TButton', background='#f0f0f0')
+        style.configure('TLabel', background='white')
+        style.configure('TFrame', background='white')
+        style.configure('TEntry', fieldbackground='white', foreground='black')
+        style.configure('TCombobox', fieldbackground='white', foreground='black')
+        # убираем выделение у активных элементов (чтобы было неярко)
+        style.map('TButton',
+                  background=[('active', '#e0e0e0')],
+                  foreground=[('disabled', 'grey')],
+                  relief=[('pressed', 'sunken'), ('!pressed', 'raised')])
+
+        # светлый фон для чистых tk‑фреймов/текстов
+        self.root.configure(bg='white')
         self.root.title("Сравнение файлов")
         #self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
         self.root.update_idletasks()
