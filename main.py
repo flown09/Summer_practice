@@ -53,7 +53,7 @@ class FileComparator:
         self.root.title("Сравнение файлов")
         #self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
         self.root.update_idletasks()
-        self.root.minsize(560, 560)
+        self.root.minsize(595, 560)
         #self.root.resizable(False, True)
         #self.root.minsize(450, self.BASE_HEIGHT)
 
@@ -340,8 +340,10 @@ class FileComparator:
         if not parent_row:
             return
 
-        sub_row_frame = tk.Frame(parent_row["sub_frame"])
+        if "subconditions" not in parent_row:
+            parent_row["subconditions"] = []
 
+        sub_row_frame = tk.Frame(parent_row["sub_frame"])
         sub_row_frame.pack(fill="x", pady=6, padx=37)
 
         logic_cb = ttk.Combobox(sub_row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
@@ -358,6 +360,19 @@ class FileComparator:
         field_cb = ttk.Combobox(sub_row_frame, state='readonly', width=20)
         field_cb.pack(side="left", padx=5)
 
+        parent_row["subconditions"].append({
+            "frame": sub_row_frame,
+            "logic_cb": logic_cb,
+            "cond_cb": cond_cb,
+            "field_cb": field_cb
+        })
+
+        # Устанавливаем поля, если уже есть датафрейм
+        if self.dfs[0] is not None:
+            field_cb['values'] = list(self.dfs[0].columns)
+            if self.dfs[0].columns.size > 0:
+                field_cb.set(self.dfs[0].columns[0])
+
         btn_remove = tk.Button(
             sub_row_frame,
             text="×",
@@ -367,6 +382,16 @@ class FileComparator:
             width=2
         )
         btn_remove.pack(side="left", padx=5)
+
+    def remove_subcondition(self, parent_row, frame):
+        # Удаляем виджет
+        frame.destroy()
+        # Удаляем из списка
+        if "subconditions" in parent_row:
+            parent_row["subconditions"] = [
+                sub for sub in parent_row["subconditions"]
+                if sub["frame"] != frame
+            ]
 
     def remove_condition_row(self, row_frame):
         """Удаляет строку с условием"""
@@ -421,6 +446,11 @@ class FileComparator:
             row["cond_cb"].set("Совпадают")
             row["field_cb"].set('')
             row["logic_cb"].set("")
+
+            if "subconditions" in row:
+                for sub in row["subconditions"]:
+                    sub["frame"].destroy()
+                row["subconditions"].clear()
 
     def download_template(self):
         """Скачивает шаблон файла"""
@@ -499,6 +529,12 @@ class FileComparator:
                 field_cb['values'] = columns
                 if columns:
                     field_cb.set(columns[0])
+
+                # Подусловия
+                for sub in row.get("subconditions", []):
+                    sub["field_cb"]['values'] = columns
+                    if columns:
+                        sub["field_cb"].set(columns[0])
 
     def compare_files(self):
         """Выполняет сравнение файлов по заданным условиям"""
