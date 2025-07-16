@@ -311,6 +311,16 @@ class FileComparator:
             )
             btn_remove.pack(side="left", padx=5)
 
+        #Кнопка добавления подусловия
+        btn_add_subcond = tk.Button(
+            row_frame,
+            text="+ Добавить подусловие",
+            #command=self.add_condition_row,
+            bg="#e0e0e0"
+        )
+        btn_add_subcond.pack(side="left", padx=5)
+
+
         # Сохраняем информацию о строке
         self.condition_rows.append({
             "frame": row_frame,
