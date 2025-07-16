@@ -242,18 +242,21 @@ class FileComparator:
         """Создает контейнер для условий с возможностью прокрутки"""
         # Основной фрейм для контейнера
         container_frame = tk.Frame(self.middle_frame)
-        container_frame.pack(fill="both", expand=True)
+        #container_frame.pack(fill="both", expand=True)
+        container_frame.pack(fill="x", pady=(0, 5))
+        container_frame.configure(height=250)
+        container_frame.pack_propagate(False)
 
         # Создаем холст (Canvas) и скроллбар
         self.canvas = tk.Canvas(container_frame)
         scrollbar = ttk.Scrollbar(container_frame, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.configure(yscrollcommand=scrollbar.set, height=250)
 
         scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
 
         # Обёртка для условий
-        self.condition_frame = tk.Frame(self.canvas)
+        self.condition_frame = tk.Frame(self.canvas, bg="#f0f0f0")
         self.condition_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -268,69 +271,102 @@ class FileComparator:
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def add_condition_row(self):
-        # Создаем фрейм для строки условия
-        row_frame = tk.Frame(self.condition_frame)
-        row_frame.pack(fill="x", pady=2)
+        # Внешний контейнер для условия и его подусловий
+        outer_frame = tk.Frame(self.condition_frame, bg="#f0f0f0")
+        outer_frame.pack(fill="x", pady=6, padx=5)
+
+        # --- Основное условие ---
+        row_frame = tk.Frame(outer_frame, bg="#f0f0f0")
+        row_frame.pack(fill="x")
 
         logic_cb = ttk.Combobox(row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
-
         if len(self.condition_rows) == 0:
-            # Первая строка: делаем пустой и неактивный
-            logic_cb.set("")  # Пустой текст
-            logic_cb.configure(state="disabled")  # Деактивировать выбор
+            logic_cb.set("")
+            logic_cb.configure(state="disabled")
         else:
-            logic_cb.set("И")  # По умолчанию можно "И" или "ИЛИ"
-
+            logic_cb.set("И")
         logic_cb.pack(side="left", padx=5)
 
-        # Выбор типа условия
         cond_options = ["Совпадают", "Не совпадают"]
         cond_cb = ttk.Combobox(row_frame, values=cond_options, state='readonly', width=15)
         cond_cb.set(cond_options[0])
         cond_cb.pack(side="left", padx=5)
 
-        # Выбор поля для сравнения
         field_cb = ttk.Combobox(row_frame, state='readonly', width=20)
         field_cb.pack(side="left", padx=5)
 
-        # Если данные уже загружены, обновляем значения
         if self.dfs[0] is not None:
             field_cb['values'] = list(self.dfs[0].columns)
             if self.dfs[0].columns.size > 0:
                 field_cb.set(self.dfs[0].columns[0])
 
-        # Кнопка удаления условия
-        if len(self.condition_rows) > 0:  # Только если это не первая строка
+        if len(self.condition_rows) > 0:
             btn_remove = tk.Button(
                 row_frame,
                 text="×",
                 fg="red",
                 font=("Arial", 10, "bold"),
-                command=partial(self.remove_condition_row, row_frame),
+                command=partial(self.remove_condition_row, outer_frame),
                 width=2
             )
             btn_remove.pack(side="left", padx=5)
 
-        #Кнопка добавления подусловия
         btn_add_subcond = tk.Button(
             row_frame,
             text="+ Добавить подусловие",
-            #command=self.add_condition_row,
+            command=partial(self.add_subcond_row, outer_frame),
             bg="#e0e0e0"
         )
         btn_add_subcond.pack(side="left", padx=5)
 
+        # --- Контейнер подусловий: ПОД основным условием ---
+        subconditions_container = tk.Frame(outer_frame)
+        subconditions_container.pack(fill="x")
 
-        # Сохраняем информацию о строке
         self.condition_rows.append({
-            "frame": row_frame,
+            "frame": outer_frame,  # теперь сохраняем outer_frame
             "logic_cb": logic_cb,
             "cond_cb": cond_cb,
-            "field_cb": field_cb
+            "field_cb": field_cb,
+            "sub_frame": subconditions_container
         })
 
-        # Обновляем размеры окна
         self.update_window_size()
+
+    def add_subcond_row(self, row_frame):
+        # Создаем фрейм для строки подусловия
+        # Найти sub_frame по row_frame
+        parent_row = next((row for row in self.condition_rows if row["frame"] == row_frame), None)
+        if not parent_row:
+            return
+
+        sub_row_frame = tk.Frame(parent_row["sub_frame"])
+
+        sub_row_frame.pack(fill="x", pady=6, padx=37)
+
+        logic_cb = ttk.Combobox(sub_row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
+        logic_cb.set("И")  # По умолчанию можно "И" или "ИЛИ"
+        logic_cb.pack(side="left", padx=5)
+
+        # Выбор типа условия
+        cond_options = ["Совпадают", "Не совпадают"]
+        cond_cb = ttk.Combobox(sub_row_frame, values=cond_options, state='readonly', width=15)
+        cond_cb.set(cond_options[0])
+        cond_cb.pack(side="left", padx=5)
+
+        # Выбор поля для сравнения
+        field_cb = ttk.Combobox(sub_row_frame, state='readonly', width=20)
+        field_cb.pack(side="left", padx=5)
+
+        btn_remove = tk.Button(
+            sub_row_frame,
+            text="×",
+            fg="red",
+            font=("Arial", 10, "bold"),
+            command=sub_row_frame.destroy,
+            width=2
+        )
+        btn_remove.pack(side="left", padx=5)
 
     def remove_condition_row(self, row_frame):
         """Удаляет строку с условием"""
@@ -346,7 +382,7 @@ class FileComparator:
             self.add_condition_row()
 
         # Обновляем размеры окна
-        self.update_window_size()
+        #self.update_window_size()
 
     def update_window_size(self):
         """Обновляет размер окна в зависимости от количества условий"""
