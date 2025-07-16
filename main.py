@@ -188,22 +188,9 @@ class FileComparator:
             messagebox.showerror("Ошибка", msg)
             return
 
-        conditions = []
-        for i, row in enumerate(self.condition_rows):
-            logic = row.get("logic_cb").get() if i > 0 else "И"
-            condition_type = row["cond_cb"].get()
-            field = row["field_cb"].get()
+        condition_structure = self.build_condition_structure()
+        result_df = self.apply_conditions(condition_structure)
 
-            if not field:
-                messagebox.showwarning("Внимание", f"Выберите поле в условии #{i + 1}!")
-                return
-            if field not in self.dfs[0].columns or field not in self.dfs[1].columns:
-                messagebox.showwarning("Внимание", f"Поле '{field}' отсутствует в одном из файлов!")
-                return
-
-            conditions.append((field, condition_type, logic))
-
-        result_df = self.apply_conditions(conditions)
         row_count = len(result_df)
 
         popup = tk.Toplevel(self.root)
@@ -560,7 +547,8 @@ class FileComparator:
 
         # Применяем условия
         try:
-            result_df = self.apply_conditions(conditions)
+            condition_structure = self.build_condition_structure()
+            result_df = self.apply_conditions(condition_structure)
         except Exception as e:
             messagebox.showerror(
                 "Ошибка при сравнении реестров",
@@ -634,50 +622,93 @@ class FileComparator:
             except Exception as e:
                 messagebox.showerror("Ошибка записи файла", str(e))
 
-    def apply_conditions(self, conditions):
-        """Применяет все условия к объединённым данным с логикой И / ИЛИ"""
-        df1 = self.dfs[0]
-        df2 = self.dfs[1]
+    def build_condition_structure(self):
+        condition_structure = []
+
+        for idx, row in enumerate(self.condition_rows):
+            group_logic = row["logic_cb"].get() if idx > 0 else "И"
+            group_conditions = []
+
+            # Основное условие
+            field = row["field_cb"].get()
+            cond_type = row["cond_cb"].get()
+            group_conditions.append({
+                "field": field,
+                "type": cond_type,
+                "logic": "И"  # первое в группе — логика не важна
+            })
+
+            # Подусловия
+            for sub_row in row["sub_frame"].winfo_children():
+                widgets = sub_row.winfo_children()
+                sub_logic = widgets[0].get()
+                sub_type = widgets[1].get()
+                sub_field = widgets[2].get()
+                group_conditions.append({
+                    "field": sub_field,
+                    "type": sub_type,
+                    "logic": sub_logic
+                })
+
+            condition_structure.append({
+                "logic": group_logic,
+                "group": group_conditions
+            })
+
+        return condition_structure
+
+    def apply_conditions(self, condition_structure):
+        df1, df2 = self.dfs
         combined = pd.concat([df1, df2], ignore_index=True)
+        combined = combined.fillna('')  # убираем NaN
+        result_mask = None
 
-        result_mask = pd.Series([True] * len(combined))
+        for group_idx, group_data in enumerate(condition_structure):
+            group_logic = group_data["logic"]
+            group_conditions = group_data["group"]
 
-        for i, (field, condition_type, logic) in enumerate(conditions):
-            # Приводим значения к строке и нижнему регистру
-            df1_vals = df1[field].astype(str).str.lower()
-            df2_vals = df2[field].astype(str).str.lower()
-            combined_vals = combined[field].astype(str).str.lower()
+            group_mask = None
+            for i, cond in enumerate(group_conditions):
+                field = cond["field"]
+                cond_type = cond["type"]
+                logic = cond["logic"]
 
-            if condition_type == "Совпадают":
-                values = set(df1_vals) & set(df2_vals)
-            elif condition_type == "Не совпадают":
-                values = set(df1_vals) ^ set(df2_vals)
-            else:
-                raise ValueError(f"Неизвестный тип условия: {condition_type}")
+                df1_vals = df1[field].astype(str).str.lower()
+                df2_vals = df2[field].astype(str).str.lower()
+                combined_vals = combined[field].astype(str).str.lower()
 
-            condition_mask = combined_vals.isin(values)
-
-            if i == 0:
-                result_mask = condition_mask
-            else:
-                if logic == "И":
-                    result_mask &= condition_mask
-                elif logic == "ИЛИ":
-                    result_mask |= condition_mask
+                if cond_type == "Совпадают":
+                    values = set(df1_vals) & set(df2_vals)
+                elif cond_type == "Не совпадают":
+                    values = set(df1_vals) ^ set(df2_vals)
                 else:
-                    raise ValueError(f"Неизвестная логика: {logic}")
+                    continue
+
+                cond_mask = combined_vals.isin(values)
+
+                if group_mask is None:
+                    group_mask = cond_mask
+                else:
+                    if logic == "И":
+                        group_mask &= cond_mask
+                    else:
+                        group_mask |= cond_mask
+
+            if result_mask is None:
+                result_mask = group_mask
+            else:
+                if group_logic == "И":
+                    result_mask &= group_mask
+                else:
+                    result_mask |= group_mask
+
+        if result_mask is None:
+            return combined.iloc[0:0]
 
         result_df = combined[result_mask].copy()
-
-        # Приводим все строки к нижнему регистру для сравнения и удаления дубликатов
-        normalized_df = result_df.apply(lambda col: col.astype(str).str.lower())
-
-        # Удаляем дубликаты по приведённым к нижнему регистру данным
-        mask = ~normalized_df.duplicated()
-
-        # Возвращаем оригинальные строки, но только те, что уникальны в нижнем регистре
-        return result_df[mask].reset_index(drop=True)
-
+        normalized = result_df.apply(lambda col: col.astype(str).str.lower())
+        unique_mask = ~normalized.duplicated()
+        return result_df[unique_mask].reset_index(drop=True)
 
 if __name__ == "__main__":
     root = tk.Tk()
