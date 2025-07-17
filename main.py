@@ -53,7 +53,7 @@ class FileComparator:
         self.root.title("Сравнение файлов")
         #self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
         self.root.update_idletasks()
-        self.root.minsize(595, 560)
+        self.root.minsize(595, 475)
         #self.root.resizable(False, True)
         #self.root.minsize(450, self.BASE_HEIGHT)
 
@@ -82,8 +82,8 @@ class FileComparator:
                               width=22, height=2)
         btn_load2 = tk.Button(top_frame, text="Загрузить реестр 2", command=lambda: self.load_file(2),
                               width=22, height=2)
-        btn_load1.grid(row=0, column=0, padx=19, pady=5)
-        btn_load2.grid(row=0, column=1, padx=19, pady=5)
+        btn_load1.grid(row=0, column=0, padx=55, pady=5)
+        btn_load2.grid(row=0, column=1, padx=55, pady=5)
 
         self.labels[0] = tk.Label(top_frame, text="Файл не загружен", fg="red", wraplength=140)
         self.labels[1] = tk.Label(top_frame, text="Файл не загружен", fg="red", wraplength=140)
@@ -112,13 +112,16 @@ class FileComparator:
                                      padx=10, pady=10, relief=tk.GROOVE, bd=2)
         bottom_frame.pack(fill="x", padx=10, pady=5)
 
-        btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template)
+        btn_template = tk.Button(bottom_frame, text="Скачать шаблон", command=self.download_template,
+                              width=20, height=2)
         btn_template.grid(row=0, column=0, padx=5)
 
-        btn_compare = tk.Button(bottom_frame, text="Сравнить", command=self.confirm_comparison)
-        btn_compare.grid(row=0, column=1, padx=(155, 0), sticky='w')
+        btn_compare = tk.Button(bottom_frame, text="Сравнить", command=self.confirm_comparison,
+                              width=20, height=2)
+        btn_compare.grid(row=0, column=1, padx=(75, 0), sticky='w')
 
-        btn_exit = tk.Button(bottom_frame, text="Закрыть", command=root.quit)
+        btn_exit = tk.Button(bottom_frame, text="Закрыть", command=root.quit,
+                              width=20, height=2)
         btn_exit.grid(row=0, column=2, padx=10)
 
         # Добавляем первое условие
@@ -146,6 +149,21 @@ class FileComparator:
        - Выберите поле для сравнения (например, СНИЛС).
        - Укажите тип условия: «Совпадают» или «Не совпадают».
        - Если добавляется несколько условий — выберите логику (И / ИЛИ).
+       
+       Добавление подусловия таким же образом.
+       Поле выбора логики (И / ИЛИ) у условия характеризует отношение
+       между группами условий, а у подусловия - отношение между условиями
+       в группе.
+       
+       Пример:
+           Совпадает Имя 
+           И Совпадает Фамилия
+           Или Совпадает Город
+       И Совпадает СНИЛС
+       
+       Если каждое условие (подусловие) представить в виде буквы, итоговое
+       выражение будет иметь следующий вид:
+       (a & b | c) & d
 
     3. Сравнение файлов:
        - Нажмите «Сравнить».
@@ -231,7 +249,7 @@ class FileComparator:
         container_frame = tk.Frame(self.middle_frame)
         #container_frame.pack(fill="both", expand=True)
         container_frame.pack(fill="x", pady=(0, 5))
-        container_frame.configure(height=250)
+        container_frame.configure(height=170)
         container_frame.pack_propagate(False)
 
         # Создаем холст (Canvas) и скроллбар
@@ -318,7 +336,7 @@ class FileComparator:
             "sub_frame": subconditions_container
         })
 
-        self.update_window_size()
+        #self.update_window_size()
 
     def add_subcond_row(self, row_frame):
         # Создаем фрейм для строки подусловия
