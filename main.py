@@ -35,7 +35,7 @@ class FileComparator:
         # выбор светлого базового стиля
         style.theme_use('clam')
         # глобально белый фон и чёрный текст для всех ttk‑виджетов
-        style.configure('.', background='white', foreground='black')
+        style.configure('.',background='white', foreground='black')
         # специфическая настройка кнопок, лейблов, комбобоксов
         style.configure('TButton', background='#f0f0f0')
         style.configure('TLabel', background='white')
@@ -261,7 +261,7 @@ class FileComparator:
         self.canvas.pack(side="left", fill="both", expand=True)
 
         # Обёртка для условий
-        self.condition_frame = tk.Frame(self.canvas, bg="#f0f0f0")
+        self.condition_frame = tk.Frame(self.canvas)
         self.condition_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -277,11 +277,11 @@ class FileComparator:
 
     def add_condition_row(self):
         # Внешний контейнер для условия и его подусловий
-        outer_frame = tk.Frame(self.condition_frame, bg="#f0f0f0")
+        outer_frame = tk.Frame(self.condition_frame)
         outer_frame.pack(fill="x", pady=6, padx=5)
 
         # --- Основное условие ---
-        row_frame = tk.Frame(outer_frame, bg="#f0f0f0")
+        row_frame = tk.Frame(outer_frame)
         row_frame.pack(fill="x")
 
         logic_cb = ttk.Combobox(row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
