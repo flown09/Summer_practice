@@ -484,17 +484,49 @@ class FileComparator:
             except Exception as e:
                 messagebox.showerror("Ошибка записи файла", str(e))
 
+    def show_loading_popup(self, text="Загрузка файла..."):
+        self.loading_popup = tk.Toplevel(self.root)
+        self.loading_popup.title("Пожалуйста, подождите")
+        self.loading_popup.geometry("250x80")
+        self.loading_popup.resizable(False, False)
+        self.loading_popup.transient(self.root)
+        self.loading_popup.grab_set()
+        self.loading_popup.update_idletasks()
+
+        # Центрирование
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        root_width = self.root.winfo_width()
+        root_height = self.root.winfo_height()
+
+        popup_x = root_x + (root_width - 250) // 2
+        popup_y = root_y + (root_height - 80) // 2
+        self.loading_popup.geometry(f"+{popup_x}+{popup_y}")
+
+        label = tk.Label(self.loading_popup, text=text, font=("Arial", 10))
+        label.pack(expand=True, pady=20)
+
+        self.loading_popup.update()
+
+    def hide_loading_popup(self):
+        if hasattr(self, 'loading_popup') and self.loading_popup.winfo_exists():
+            self.loading_popup.destroy()
+
     def load_file(self, button_number):
-        """Загружает файл"""
         filename = filedialog.askopenfilename(title=f"Выберите файл {button_number}", filetypes=self.filetypes)
         if filename:
-            self.file_paths[button_number - 1] = filename
-            file_name_only = os.path.basename(filename)
-            self.labels[button_number - 1].config(text=f"{file_name_only}", fg="green")
+            self.show_loading_popup(f"Загрузка файла {button_number}...")
+            self.root.after(100, lambda: self._load_file_async(filename, button_number))
 
-            # Сохраняем загруженные данные
-            self.dfs[button_number - 1] = self.read_data(filename)
-            self.update_field_comboboxes()
+    def _load_file_async(self, filename, button_number):
+        self.file_paths[button_number - 1] = filename
+        file_name_only = os.path.basename(filename)
+        self.labels[button_number - 1].config(text=f"{file_name_only}", fg="green")
+
+        self.dfs[button_number - 1] = self.read_data(filename)
+        self.update_field_comboboxes()
+
+        self.hide_loading_popup()
 
     def read_data(self, file_path):
         """Читает данные из файла"""
