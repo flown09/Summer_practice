@@ -292,7 +292,7 @@ class FileComparator:
             logic_cb.set("И")
         logic_cb.pack(side="left", padx=5)
 
-        cond_options = ["Совпадают", "Не совпадают"]
+        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто"]
         cond_cb = ttk.Combobox(row_frame, values=cond_options, state='readonly', width=15)
         cond_cb.set(cond_options[0])
         cond_cb.pack(side="left", padx=5)
@@ -356,7 +356,7 @@ class FileComparator:
         logic_cb.pack(side="left", padx=5)
 
         # Выбор типа условия
-        cond_options = ["Совпадают", "Не совпадают"]
+        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто"]
         cond_cb = ttk.Combobox(sub_row_frame, values=cond_options, state='readonly', width=15)
         cond_cb.set(cond_options[0])
         cond_cb.pack(side="left", padx=5)
@@ -709,16 +709,12 @@ class FileComparator:
 
     def apply_conditions(self, condition_structure):
         df1, df2 = self.dfs
-        combined = pd.concat([df1, df2], ignore_index=True)
-        combined = combined.fillna('')  # убираем NaN
+        combined = pd.concat([df1, df2], ignore_index=True).fillna('')
         result_mask = None
 
-        for group_idx, group_data in enumerate(condition_structure):
-            group_logic = group_data["logic"]
-            group_conditions = group_data["group"]
-
+        for group_data in condition_structure:
             group_mask = None
-            for i, cond in enumerate(group_conditions):
+            for cond in group_data["group"]:
                 field = cond["field"]
                 cond_type = cond["type"]
                 logic = cond["logic"]
@@ -729,13 +725,22 @@ class FileComparator:
 
                 if cond_type == "Совпадают":
                     values = set(df1_vals) & set(df2_vals)
+                    cond_mask = combined_vals.isin(values)
+
                 elif cond_type == "Не совпадают":
                     values = set(df1_vals) ^ set(df2_vals)
+                    cond_mask = combined_vals.isin(values)
+
+                elif cond_type == "Пусто":
+                    cond_mask = combined_vals == ''
+
+                elif cond_type == "Непусто":
+                    cond_mask = combined_vals != ''
+
                 else:
                     continue
 
-                cond_mask = combined_vals.isin(values)
-
+                # объединяем по под-логике в группе
                 if group_mask is None:
                     group_mask = cond_mask
                 else:
@@ -744,10 +749,11 @@ class FileComparator:
                     else:
                         group_mask |= cond_mask
 
+            # объединяем группы по внешней логике
             if result_mask is None:
                 result_mask = group_mask
             else:
-                if group_logic == "И":
+                if group_data["logic"] == "И":
                     result_mask &= group_mask
                 else:
                     result_mask |= group_mask
