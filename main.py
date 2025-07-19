@@ -292,7 +292,7 @@ class FileComparator:
             logic_cb.set("И")
         logic_cb.pack(side="left", padx=5)
 
-        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто"]
+        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто", "Содержит"]
         cond_cb = ttk.Combobox(row_frame, values=cond_options, state='readonly', width=15)
         cond_cb.set(cond_options[0])
         cond_cb.pack(side="left", padx=5)
@@ -356,7 +356,7 @@ class FileComparator:
         logic_cb.pack(side="left", padx=5)
 
         # Выбор типа условия
-        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто"]
+        cond_options = ["Совпадают", "Не совпадают", "Пусто", "Непусто", "Содержит"]
         cond_cb = ttk.Combobox(sub_row_frame, values=cond_options, state='readonly', width=15)
         cond_cb.set(cond_options[0])
         cond_cb.pack(side="left", padx=5)
@@ -737,6 +737,20 @@ class FileComparator:
                 elif cond_type == "Непусто":
                     cond_mask = combined_vals != ''
 
+                elif cond_type == "Содержит":
+                    set1 = set(df1_vals)
+                    set2 = set(df2_vals)
+
+                    # найдём все значения, где одно содержит другое
+                    matched = set()
+                    for a in set1:
+                        for b in set2:
+                            if a and b and (a in b or b in a):
+                                matched.add(a)
+                                matched.add(b)
+
+                    # отбираем из combined только те, которые в matched
+                    cond_mask = combined_vals.isin(matched)
                 else:
                     continue
 
