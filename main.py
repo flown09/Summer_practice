@@ -30,32 +30,23 @@ class FileComparator:
         self.setup_ui()
 
     def setup_ui(self):
-        # --- принудительная светлая тема для ttk ---
         style = ttk.Style(self.root)
-        # выбор светлого базового стиля
         style.theme_use('clam')
-        # глобально белый фон и чёрный текст для всех ttk‑виджетов
         style.configure('.',background='white', foreground='black')
-        # специфическая настройка кнопок, лейблов, комбобоксов
         style.configure('TButton', background='#f0f0f0')
         style.configure('TLabel', background='white')
         style.configure('TFrame', background='white')
         style.configure('TEntry', fieldbackground='white', foreground='black')
         style.configure('TCombobox', fieldbackground='white', foreground='black')
-        # убираем выделение у активных элементов (чтобы было неярко)
         style.map('TButton',
                   background=[('active', '#e0e0e0')],
                   foreground=[('disabled', 'grey')],
                   relief=[('pressed', 'sunken'), ('!pressed', 'raised')])
 
-        # светлый фон для чистых tk‑фреймов/текстов
         self.root.configure(bg='white')
         self.root.title("Сравнение файлов")
-        #self.root.geometry(f"450x{self.BASE_HEIGHT}+400+200")
         self.root.update_idletasks()
         self.root.minsize(595, 475)
-        #self.root.resizable(False, True)
-        #self.root.minsize(450, self.BASE_HEIGHT)
 
         # Главное меню
         main_menu = tk.Menu(root)
@@ -128,13 +119,6 @@ class FileComparator:
         self.add_condition_row()
 
     def show_help(self):
-        #help_window = tk.Toplevel(self.root)
-        #help_window.title("Инструкция по использованию")
-        #help_window.geometry("600x400")
-        #help_window.transient(self.root)
-        #help_window.grab_set()
-
-        #text = tk.Text(help_window, wrap="word", padx=10, pady=10)
         messagebox.showinfo("Инструкция",
                             """\
     Инструкция по использованию приложения:
@@ -178,12 +162,6 @@ class FileComparator:
 
     Результаты сравнения сохраняются в файл.
     """)
-        #text.config(state="disabled")
-        #text.pack(fill="both", expand=True)
-
-        # Кнопка закрытия
-        #close_btn = tk.Button(help_window, text="Закрыть", command=help_window.destroy)
-        #close_btn.pack(pady=5)
 
     def confirm_comparison(self):
         """Показывает модальное окно с количеством строк перед сравнением"""
@@ -245,9 +223,7 @@ class FileComparator:
 
     def create_conditions_container(self):
         """Создает контейнер для условий с возможностью прокрутки"""
-        # Основной фрейм для контейнера
         container_frame = tk.Frame(self.middle_frame)
-        #container_frame.pack(fill="both", expand=True)
         container_frame.pack(fill="x", pady=(0, 5))
         container_frame.configure(height=170)
         container_frame.pack_propagate(False)
@@ -329,18 +305,15 @@ class FileComparator:
         subconditions_container.pack(fill="x")
 
         self.condition_rows.append({
-            "frame": outer_frame,  # теперь сохраняем outer_frame
+            "frame": outer_frame,
             "logic_cb": logic_cb,
             "cond_cb": cond_cb,
             "field_cb": field_cb,
             "sub_frame": subconditions_container
         })
 
-        #self.update_window_size()
-
     def add_subcond_row(self, row_frame):
         # Создаем фрейм для строки подусловия
-        # Найти sub_frame по row_frame
         parent_row = next((row for row in self.condition_rows if row["frame"] == row_frame), None)
         if not parent_row:
             return
@@ -352,7 +325,7 @@ class FileComparator:
         sub_row_frame.pack(fill="x", pady=6, padx=37)
 
         logic_cb = ttk.Combobox(sub_row_frame, values=["И", "ИЛИ"], state='readonly', width=5)
-        logic_cb.set("И")  # По умолчанию можно "И" или "ИЛИ"
+        logic_cb.set("И")
         logic_cb.pack(side="left", padx=5)
 
         # Выбор типа условия
@@ -400,7 +373,6 @@ class FileComparator:
 
     def remove_condition_row(self, row_frame):
         """Удаляет строку с условием"""
-        # Находим и удаляем строку
         for i, row in enumerate(self.condition_rows):
             if row["frame"] == row_frame:
                 row["frame"].destroy()
@@ -411,15 +383,8 @@ class FileComparator:
         if len(self.condition_rows) == 0:
             self.add_condition_row()
 
-        # Обновляем размеры окна
-        #self.update_window_size()
-
     def update_window_size(self):
         """Обновляет размер окна в зависимости от количества условий"""
-        # Вычисляем новую высоту
-        # visible_rows = min(len(self.condition_rows), self.MAX_VISIBLE_ROWS)
-        # extra_height = visible_rows * self.ROW_HEIGHT
-        # new_height = self.BASE_HEIGHT + extra_height
         visible_rows = len(self.condition_rows)
         if visible_rows > self.MAX_VISIBLE_ROWS:
             extra_height = self.MAX_VISIBLE_ROWS * self.ROW_HEIGHT
@@ -546,7 +511,6 @@ class FileComparator:
             elif ext == 'csv':
                 return pd.read_csv(file_path, encoding="utf-8-sig")
             elif ext == 'ods':
-                # Аналогично для ODS
                 sheets = pd.read_excel(file_path, engine='odf', sheet_name=None)
                 df = pd.concat(sheets.values(), ignore_index=True)
                 return df
@@ -621,7 +585,6 @@ class FileComparator:
 
         if output_file:
             try:
-                #result_df.to_excel(output_file, index=False)
                 file_ext = os.path.splitext(output_file)[1].lower()
                 if file_ext == ".csv":
                     result_df.to_csv(output_file, index=False, encoding="utf-8-sig")
@@ -685,7 +648,7 @@ class FileComparator:
             group_conditions.append({
                 "field": field,
                 "type": cond_type,
-                "logic": "И"  # первое в группе — логика не важна
+                "logic": "И"
             })
 
             # Подусловия
@@ -741,7 +704,6 @@ class FileComparator:
                     set1 = set(df1_vals)
                     set2 = set(df2_vals)
 
-                    # найдём все значения, где одно содержит другое
                     matched = set()
                     for a in set1:
                         for b in set2:
@@ -749,7 +711,6 @@ class FileComparator:
                                 matched.add(a)
                                 matched.add(b)
 
-                    # отбираем из combined только те, которые в matched
                     cond_mask = combined_vals.isin(matched)
                 else:
                     continue
