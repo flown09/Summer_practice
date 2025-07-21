@@ -1,4 +1,4 @@
-('/home/flown9/Summer_practice/build/main/PYZ-00.pyz',
+('/home/flown9/Comparing_files/Summer_practice/build/main/PYZ-00.pyz',
  [('PIL', '/usr/lib64/python3.8/site-packages/PIL/__init__.py', 'PYMODULE'),
   ('PIL.BlpImagePlugin',
    '/usr/lib64/python3.8/site-packages/PIL/BlpImagePlugin.py',
